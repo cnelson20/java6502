@@ -39,7 +39,7 @@ public class Assembler {
             break;
           default:
             System.out.println("Assembler Error! This shouldn't happen.");
-            System.exit(-1);
+            System.exit(1);
             break;
       }
     } else {
@@ -90,13 +90,13 @@ public class Assembler {
     Scanner scan = null;
     if (check.equals(filename)) {
       System.out.println("Error: A file cannot include itself");
-      System.exit(-1);
+      System.exit(1);
     }
     try {
       scan = new Scanner(new File(filename));
     } catch (FileNotFoundException e) {
       System.out.println("File " + filename + " not found.");
-      System.exit(-1);
+      System.exit(1);
     }
     while(scan.hasNextLine()) {
       String line = scan.nextLine().toLowerCase();
@@ -113,10 +113,10 @@ public class Assembler {
   public static void main(String[] args) {
     if (args.length < 1) {
       System.out.println("Usage:\n\tjava Assembler filename -options");
-      System.exit(-1);
+      System.exit(1);
     }
     String input = args[0];
-    String outputName = input.substring(input.lastIndexOf(".")) + ".prg";
+    String outputName = input.substring(0,input.lastIndexOf(".")) + ".prg";
     boolean verbose = false;
     targetPlatform[] all_platforms = targetPlatform.getAllPlatforms();
     targetPlatform platform = all_platforms[0];
@@ -138,7 +138,7 @@ public class Assembler {
           }
           if (!plFd) {
             System.out.println("Platform \"" + args[i] + "\" does not exist");
-            System.exit(-1);
+            System.exit(1);
           }
           break;
         case "-verbose":
@@ -147,7 +147,7 @@ public class Assembler {
         case "-h":
         case "-help":
           System.out.println("Options:\n");
-          System.exit(-1);
+          System.exit(1);
         default:
           break;
       }
@@ -670,7 +670,7 @@ public class Assembler {
               if (line.charAt(0) == '@') {
                 if (lastGlobalLabel == null) {
                   System.out.println(input + "(" + (lineNum + 1) + "): Error: Local labels are not allowed before the first global label");
-                  System.exit(-1);
+                  System.exit(1);
                 } else {
                   tempCode.add("__LBL_" + line.substring(0,line.lastIndexOf(':')));
                 }
@@ -680,7 +680,7 @@ public class Assembler {
               }
             } else {
               System.out.println(input + "(" + (lineNum + 1) + "): Error: Incorrect opcode or other error");
-              System.exit(-1);
+              System.exit(1);
             }
             break;
         }
@@ -731,6 +731,22 @@ public class Assembler {
             break;
           case ".word":
           case ".dw":
+			if (tempLine.indexOf('"') != -1) {
+              System.out.println("Error: .word does not accept string literals.");
+			  System.exit(1);
+            } else {
+              tempStringArray = tempLine.substring(tempLine.indexOf(' ') + 1).split(", ");
+              tempString = "";
+              for (int t = 0; t < tempStringArray.length; t++) {
+                if (parseNumber(tempStringArray[t]) < 65536 && parseNumber(tempStringArray[t]) >= 0) {
+                  tempString += "$" + (parseNumber(tempStringArray[t]) > 15 ? "" : "0") + Integer.toHexString(parseNumber(tempStringArray[t])) + " ";
+                } else {
+                  System.out.println("Number " + parseNumber(tempStringArray[t]) + " out of bounds of range [0,255]");
+                }
+              }
+              tempCode.set(i,"_DAT " + tempString);
+              opSizes.set(i,tempStringArray.length);
+            }
             break;
           case ".define":
             labels.put(tempLine.split(" ")[1],parseNumber(tempLine.split(" ")[2]));
@@ -745,7 +761,7 @@ public class Assembler {
               }
             } catch (IOException e) {
               System.out.println("File " + tempLine.substring(tempLine.indexOf('"')+1,tempLine.lastIndexOf('"')) + " not found.");
-              System.exit(-1);
+              System.exit(1);
             }
             tempCode.set(i,"_DAT " + forORGString);
             opSizes.set(i,forORGString.length() / 4);
@@ -754,7 +770,7 @@ public class Assembler {
             forORG = parseNumber(tempLine.substring(tempLine.indexOf(',')+1));
             if (forORG < 0 || forORG > 255) {
               System.out.println("Number \"" + forORG + "\" out of range [0,255]");
-              System.exit(-1);
+              System.exit(1);
             }
             forRES = "$" + (forORG > 15 ? "" : "0") + Integer.toHexString(forORG) + " ";
             forORG = parseNumber(tempLine.substring(tempLine.indexOf(' ')+1,tempLine.indexOf(',')));
@@ -780,12 +796,12 @@ public class Assembler {
             } else if (forORG == PrgmCounter) { // do nothing
             } else {
               System.out.println("Error: .org must change location to higher address");
-              System.exit(-1);
+              System.exit(1);
             }
             break;
           default:
             System.out.println("Error: Unknown assembler directive \"" + tempLine.split(" ")[0] + "\"");
-            System.exit(-1);
+            System.exit(1);
         }
       }
       PrgmCounter += opSizes.get(i);
@@ -803,7 +819,7 @@ public class Assembler {
     for (int i = 0; i < tempCode.size(); i++) {
       String line = tempCode.get(i);
       System.out.println(line);
-      if (line.charAt(0) == '_' || line.charAt(0) == '.' || (line.length() >= 4 && line.substring(3,9).equals("__REL_"))) {
+      if (line.charAt(0) == '_' || line.charAt(0) == '.' || (line.length() >= 8 && line.substring(3,9).equals("__REL_"))) {
         if (line.substring(0,4).equals("_DAT")) {
           for (String s : line.substring(5).split(" ",0)) {
             outputBytes.add(getCharFromString(s,1));
@@ -818,7 +834,7 @@ public class Assembler {
             temp = parseLabel(line.substring(9),labels,lastGlobalLabel) - PrgmCounter - 2;
             if (temp < -128 || temp > 127) {
               System.out.println("Branch distance " + temp + " out of range [-128,127]");
-              System.exit(-1);
+              System.exit(1);
             }
             outputBytes.add(getCharFromString(line,0));
             outputBytes.add((char)((byte)temp));
@@ -844,7 +860,7 @@ public class Assembler {
         toWrite = new FileOutputStream(outputName);
       } catch (FileNotFoundException fe) {
         System.out.println("File " + input + " not found.");
-        System.exit(-1);
+        System.exit(1);
       }
       for (int c : outputBytes) {
         toWrite.write(c);
@@ -852,7 +868,7 @@ public class Assembler {
       toWrite.close();
     } catch (IOException e) {
       System.out.println("Cannot write to file \"" + outputName + "\"");
-      System.exit(-1);
+      System.exit(1);
     }
   }
 }
