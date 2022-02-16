@@ -3,6 +3,13 @@ import java.util.*;
 
 public class Assembler {
   private final static targetPlatform cbm = new targetPlatform(new char[] {0x01, 0x08, 0x0B, 0x08, 0x30, 0x03, 0x9E, 0x32, 0x30, 0x36, 0x31, 0x00, 0x00, 0x00},2061,"CBM");
+  
+  /*
+    parses a String representing a number in whatever base is implied
+    ("%111") => 7
+    ("$FF") => 255
+    ("100") => 100
+  */ 
   public static int parseNumber(String s) {
     int i = 0;
     while (s.charAt(i) == ' ') {i++;}
@@ -14,6 +21,11 @@ public class Assembler {
       return Integer.parseInt(s,10);
     }
   }
+
+  /* 
+    Returns a string representing the characters in string as bytes
+    ex. ("Hello") => "$48 $65 $6c $6c $6f"
+  */
   private static String hexBytes(String s) {
     String r = "";
     for (int i = 0; i < s.length(); i++) {
@@ -21,12 +33,22 @@ public class Assembler {
     }
     return r;
   }
+
+  /*
+    Given a hex value in s starting at index, return the number the hex represents typecasted to a char 
+    ex. ("$41" , 1) => 'A'
+  */
   private static char getCharFromString(String s, int index) {
     return (char)Integer.parseInt(s.substring(index,index+2),16);
   }
+  // Returns if a character is a letter A-Z, a-z
   private static boolean isLetter(char c) {
     return ((c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A));
   }
+
+  /*
+    Calls parseTHHelper with the correct limit  
+  */
   private static void parseT(ArrayList<Character> output, String s, HashMap<String,Integer> labels, String lastLabel) {
     while (s.charAt(0) == ' ') {s = s.substring(1);}
     if (s.charAt(0) == '_') {
@@ -46,6 +68,13 @@ public class Assembler {
       parseTHelper(65535,output,s,labels,lastLabel);
     }
   }
+  /* 
+    Given limit (limit a label can be, mostly for absolute lds)
+    output (output to write to)
+    s, a label
+    labels, a hashmap of labels
+    and lastLabel, the last non-@ label
+  */
   private static void parseTHelper(int limit, ArrayList<Character> output, String s, HashMap<String,Integer> labels, String lastLabel) {
     while (s.charAt(s.length() - 1) == ' ') {
       s = s.substring(0,s.length()-1);
@@ -67,12 +96,17 @@ public class Assembler {
       output.add(toadd[1]);
     }
   }
+  /* Get value of a label */
   private static int parseLabel(String s, HashMap<String,Integer> labels, String lastLabel) {
     if (s.charAt(0) == '@') {s = lastLabel + s;}
     //System.out.println(labels);
     //System.out.println("S: " + s);
     return labels.get(s);
   }
+  /*
+  Parses a String s representing a number, and bounds check it using min and max.
+  Returns the number s is as bytes in a char[]. 
+  */
   private static char[] parseNT(String s,int min, int max) {
     char[] r = new char[2];
     if (max < 0) {max = Integer.MAX_VALUE;}
@@ -85,6 +119,11 @@ public class Assembler {
     r[1] = (char)((i % 65536) / 256);
     return r;
   }
+
+  /*
+    split filename's content into lines
+    Returns an ArrayList of the lines 
+  */
   private static ArrayList<String> getLines(String check, String filename) {
     ArrayList<String> lines = new ArrayList();
     Scanner scan = null;
@@ -110,6 +149,9 @@ public class Assembler {
     return lines;
   }
 
+  /* 
+    main
+  */
   public static void main(String[] args) {
     if (args.length < 1) {
       System.out.println("Usage:\n\tjava Assembler filename -options");
