@@ -106,36 +106,64 @@ public class Assembler {
   }
 
   /* 
+    Returns if char c could be a number
+  */
+  private static boolean isNumberChar(char c, boolean isFirstCharacter) {
+    if (c >= '0' && c <= '9') {
+      return true;
+    }
+    if (isFirstCharacter) {
+      if (c == '$' || c == '%') {
+        return true;
+      }
+    } else {
+      if ((c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /* 
+    returns true if c = A-Z, a-z, @ or _
+  */
+  private static boolean isLetterExtended(char c) {
+    return isLetter(c) || c == '_' || c == '@';
+  }
+
+  /* 
     does operations with statement
     First splits s into tokens, then operates on them.
   */
   public static int parseStatement(String s, HashMap<String,Integer> labels, String lastLabel) {
     ArrayList<String> parts = new ArrayList();
-    char type = (isLetter(s.charAt(0)) || s.charAt(0) == '_') ? 'l' : ((s.charAt(0) >= '0' && s.charAt(0) <= '9') ? '0' : '+');
+    char type = isLetterExtended(s.charAt(0)) ? 'l' : (isNumberChar(s.charAt(0), true) ? '0' : '+');
     String currentString = (type == 'l') ? "L_" : ((type == '0') ? "N_" : "O_");
     currentString += s.charAt(0);
     for (int i = 1; i < s.length(); i++) {
       if (type == 'l') {
-        if (isLetter(s.charAt(i)) || s.charAt(i) == '_') {
+        if (isLetterExtended(s.charAt(i))) {
           currentString += s.charAt(i);
         } else {
           parts.add(currentString);
           if (s.charAt(i) == ' ') {
             i++;
+            if (i >= s.length()) {currentString = ""; break;}
           }
-          type = (isLetter(s.charAt(i)) || s.charAt(0) == '_') ? 'l' : ((s.charAt(i) >= '0' && s.charAt(i) <= '9') ? '0' : '+');  
+          type = isLetterExtended(s.charAt(i)) ? 'l' : (isNumberChar(s.charAt(i), true) ? '0' : '+');  
           currentString = (type == 'l') ? "L_" : ((type == '0') ? "N_" : "O_");
           currentString += s.charAt(i) + "";
         }
       } else if (type == '0') {
-        if (s.charAt(i) >= '0' && s.charAt(i) <= '9') {
+        if (isNumberChar(s.charAt(i), false)) {
           currentString += s.charAt(i);
         } else {
           parts.add(currentString);
           if (s.charAt(i) == ' ') {
             i++;
+            if (i >= s.length()) {currentString = ""; break;}
           }
-          type = (isLetter(s.charAt(i)) || s.charAt(0) == '_') ? 'l' : ((s.charAt(i) >= '0' && s.charAt(i) <= '9') ? '0' : '+');  
+          type = isLetterExtended(s.charAt(i)) ? 'l' : (isNumberChar(s.charAt(i), true) ? '0' : '+');  
           currentString = (type == 'l') ? "L_" : ((type == '0') ? "N_" : "O_");
           currentString += s.charAt(i) + "";
         }
@@ -146,17 +174,21 @@ public class Assembler {
           parts.add(currentString);
           if (s.charAt(i) == ' ') {
             i++;
+            if (i >= s.length()) {currentString = ""; break;}
           }
-          type = (isLetter(s.charAt(i)) || s.charAt(0) == '_') ? 'l' : ((s.charAt(i) >= '0' && s.charAt(i) <= '9') ? '0' : '+');  
+          type = isLetterExtended(s.charAt(i)) ? 'l' : (isNumberChar(s.charAt(i), true) ? '0' : '+');  
           currentString = (type == 'l') ? "L_" : ((type == '0') ? "N_" : "O_");
           currentString += s.charAt(i) + "";
         }
       }
     }
-    parts.add(currentString);
+    if (currentString.length() != 0) {
+      parts.add(currentString);
+    }
     int[] array = new int[parts.size()];
     for (int i = 0; i < parts.size(); i++) {
       if (parts.get(i).charAt(0) == 'L') {
+        //System.out.println(parts.get(i).substring(2));
         array[i] = parseLabel(parts.get(i).substring(2), labels, lastLabel);
       } else if (parts.get(i).charAt(0) == 'N') {
         array[i] = parseNumber(parts.get(i).substring(2));
@@ -190,6 +222,10 @@ public class Assembler {
     for (int i = 0; i < parts.size(); i++) {
       sum += array[i];
     }
+    /*
+    System.out.println("parseStatement(" + s + ") => " + sum);
+    System.out.println(Arrays.toString(array));
+    */
     return sum;
   }
 
@@ -847,7 +883,7 @@ public class Assembler {
       } else if (tempLine.length() >= 5 && tempLine.substring(0,5).equals("__LBB")) {
         String val = tempLine.substring(6);
         //System.out.println(val);
-        labels.put(val.substring(0, val.indexOf('=')), parseNumber(val.substring(val.indexOf('=') + 1)));
+        labels.put(val.substring(0, val.indexOf('=')), parseStatement(val.substring(val.indexOf('=') + 1), labels, lastGlobalLabel));
       }
       //System.out.println(tempLine);
       if (tempLine.charAt(0) == '.') {
@@ -953,6 +989,7 @@ public class Assembler {
       System.out.println(labels);
     }
 
+    int outputBytes_sizePrev = 0;
     ArrayList<Character> outputBytes = new ArrayList();
     for (int i = 0; i < platform.header.length; i++) {
       outputBytes.add(platform.header[i]);
@@ -960,6 +997,22 @@ public class Assembler {
     lastGlobalLabel = null;
     PrgmCounter = platform.startAddr;
     for (int i = 0; i < tempCode.size(); i++) {
+      /* This is so you can print all the bytes from the previous iteration */
+      if (verbose && outputBytes_sizePrev < outputBytes.size()) {
+        if (outputBytes.size() - outputBytes_sizePrev < 40) {
+          if (i == 0) {
+            System.out.print("Program Header: ");
+          }
+          for (int tempFor = outputBytes_sizePrev; tempFor < outputBytes.size(); tempFor++) {
+            System.out.print((tempFor == outputBytes_sizePrev ? "[$" : ", $") + Integer.toHexString(outputBytes.get(tempFor)));
+          }
+          System.out.println("]");
+        } else {
+          System.out.println("[ Many bytes just added... " + (i == 0 ? "(Likely a program header)" : "(.incbin perhaps)")  + " ]");
+        }
+      }
+      outputBytes_sizePrev = outputBytes.size();
+
       String line = tempCode.get(i);
       if (verbose) {
         if (line.length() >= 40) {
@@ -1001,8 +1054,13 @@ public class Assembler {
         outputBytes.add(getCharFromString(line,0)); // instruction opcode
         // now we figure out the bytes proceding
         //if (verbose) {System.out.println(line);}
-        if (line.indexOf(' ') >= 0) {
-          parseT(outputBytes,line.substring(line.indexOf(' ') + 1),labels,lastGlobalLabel);
+        if (line.indexOf(' ') != -1) {          
+          if (line.indexOf("__UFF_") != -1 || line.indexOf('<') != -1 || line.indexOf('>') != -1) {
+            parseT(outputBytes,line.substring(line.indexOf(' ') + 1),labels,lastGlobalLabel);
+          } else {
+            int itemp = parseStatement(line.substring(line.indexOf(' ') + 1), labels, lastGlobalLabel);
+            parseT(outputBytes, itemp + "", labels, lastGlobalLabel);
+          }
         }
       }
       PrgmCounter += opSizes.get(i);
