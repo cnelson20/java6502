@@ -50,12 +50,16 @@ public class Assembler {
     Calls parseTHHelper with the correct limit  
   */
   private static void parseT(ArrayList<Character> output, String s, HashMap<String,Integer> labels, String lastLabel) {
+    //System.out.println("parseT(): s='" + s + "'");
     while (s.charAt(0) == ' ') {s = s.substring(1);}
     if (s.charAt(0) == '_') {
       switch (s.substring(0,6)) {
           case "__UFF_":
+            int outputSize = output.size();
             parseTHelper(255,output,s.substring(6),labels,lastLabel);
-            output.remove(output.size() - 1);
+            while (output.size() > outputSize + 1) {
+              output.remove(output.size() - 1);
+            }
             break;
           case "__REL_":
             break;
@@ -586,7 +590,7 @@ public class Assembler {
           case "dec ":
             if (line.length() <= 4 || line.charAt(line.indexOf(' ') + 1) == 'a') {
               // DEC A 65c02 only opcode
-              tempCode.add("1A");
+              tempCode.add("3A");
               opSizes.add(1);
             } else {
               opSizes.add(3);
@@ -600,7 +604,7 @@ public class Assembler {
           case "inc ":
             if (line.length() <= 4 || line.charAt(line.indexOf(' ') + 1) == 'a') {
               // INC A 65c02 only opcode
-              tempCode.add("3A");
+              tempCode.add("1A");
               opSizes.add(1);
             } else {
               opSizes.add(3);
