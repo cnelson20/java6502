@@ -104,6 +104,95 @@ public class Assembler {
     //System.out.println("S: '" + s + '\'');
     return labels.get(s);
   }
+
+  /* 
+    does operations with statement
+    First splits s into tokens, then operates on them.
+  */
+  public static int parseStatement(String s, HashMap<String,Integer> labels, String lastLabel) {
+    ArrayList<String> parts = new ArrayList();
+    char type = (isLetter(s.charAt(0)) || s.charAt(0) == '_') ? 'l' : ((s.charAt(0) >= '0' && s.charAt(0) <= '9') ? '0' : '+');
+    String currentString = (type == 'l') ? "L_" : ((type == '0') ? "N_" : "O_");
+    currentString += s.charAt(0);
+    for (int i = 1; i < s.length(); i++) {
+      if (type == 'l') {
+        if (isLetter(s.charAt(i)) || s.charAt(i) == '_') {
+          currentString += s.charAt(i);
+        } else {
+          parts.add(currentString);
+          if (s.charAt(i) == ' ') {
+            i++;
+          }
+          type = (isLetter(s.charAt(i)) || s.charAt(0) == '_') ? 'l' : ((s.charAt(i) >= '0' && s.charAt(i) <= '9') ? '0' : '+');  
+          currentString = (type == 'l') ? "L_" : ((type == '0') ? "N_" : "O_");
+          currentString += s.charAt(i) + "";
+        }
+      } else if (type == '0') {
+        if (s.charAt(i) >= '0' && s.charAt(i) <= '9') {
+          currentString += s.charAt(i);
+        } else {
+          parts.add(currentString);
+          if (s.charAt(i) == ' ') {
+            i++;
+          }
+          type = (isLetter(s.charAt(i)) || s.charAt(0) == '_') ? 'l' : ((s.charAt(i) >= '0' && s.charAt(i) <= '9') ? '0' : '+');  
+          currentString = (type == 'l') ? "L_" : ((type == '0') ? "N_" : "O_");
+          currentString += s.charAt(i) + "";
+        }
+      } else /* type == '+'' */ {
+        if (s.charAt(i) == '+' || s.charAt(i) == '-' || s.charAt(i) == '*' || s.charAt(i) == '/') {
+          currentString += s.charAt(i);
+        } else {
+          parts.add(currentString);
+          if (s.charAt(i) == ' ') {
+            i++;
+          }
+          type = (isLetter(s.charAt(i)) || s.charAt(0) == '_') ? 'l' : ((s.charAt(i) >= '0' && s.charAt(i) <= '9') ? '0' : '+');  
+          currentString = (type == 'l') ? "L_" : ((type == '0') ? "N_" : "O_");
+          currentString += s.charAt(i) + "";
+        }
+      }
+    }
+    parts.add(currentString);
+    int[] array = new int[parts.size()];
+    for (int i = 0; i < parts.size(); i++) {
+      if (parts.get(i).charAt(0) == 'L') {
+        array[i] = parseLabel(parts.get(i).substring(2), labels, lastLabel);
+      } else if (parts.get(i).charAt(0) == 'N') {
+        array[i] = parseNumber(parts.get(i).substring(2));
+      } else {
+        array[i] = -1000;
+      }
+    }
+    for (int i = 1; i < parts.size() - 1; i++) {
+      if (array[i] == -1000) {
+        switch (parts.get(i).charAt(2)) {
+          case '+':
+            array[i] = array[i-1] + array[i+1];
+            array[i] = 0;
+            break;
+          case '-':
+            array[i] = array[i-1] - array[i+1];
+            array[i] = 0;
+            break;
+          case '*':
+            array[i] = array[i-1] * array[i+1];
+            array[i] = 0;
+            break;
+          case '/':
+            array[i] = array[i-1] / array[i+1];
+            array[i] = 0;
+            break;
+          }
+      }
+    }
+    int sum = 0;
+    for (int i = 0; i < parts.size(); i++) {
+      sum += array[i];
+    }
+    return sum;
+  }
+
   /*
   Parses a String s representing a number, and bounds check it using min and max.
   Returns the number s is as bytes in a char[]. 
