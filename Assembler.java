@@ -98,9 +98,10 @@ public class Assembler {
   }
   /* Get value of a label */
   private static int parseLabel(String s, HashMap<String,Integer> labels, String lastLabel) {
-    if (s.charAt(0) == '@') {s = lastLabel + s;}
+    if (s.charAt(0) == '@') {s = lastLabel + "_" + s;}
     //System.out.println(labels);
-    //System.out.println("S: " + s);
+    s = s.replaceAll("\\s+","");
+    //System.out.println("S: '" + s + '\'');
     return labels.get(s);
   }
   /*
@@ -160,8 +161,8 @@ public class Assembler {
     String input = args[0];
     String outputName = input.substring(0,input.lastIndexOf(".")) + ".prg";
     boolean verbose = false;
-    targetPlatform[] all_platforms = targetPlatform.getAllPlatforms();
-    targetPlatform platform = all_platforms[0];
+    targetPlatform[] all_platforms = new targetPlatform[0]; // targetPlatform.getAllPlatforms();
+    targetPlatform platform = cbm; // all_platforms[0];
     boolean plFd;
     // Parse Flags
     for (int i = 2; i <= args.length; i++) {
@@ -209,7 +210,7 @@ public class Assembler {
       if (line.length() == 0) {continue;}
       // Leave assembler instructions for later
       if (line.charAt(0) == '.') {
-        if (line.substring(1,8).equals("include")) {
+        if (line.length() >= 8 && line.substring(1,8).equals("include")) {
           forMerge = new ArrayList(lines.subList(0,lineNum));
           forMergeB = getLines(input,line.substring(line.indexOf('"')+1,line.lastIndexOf('"')));
           forMerge.add(forMergeB.get(0)); // Not sure at all why this is necessary
@@ -222,8 +223,12 @@ public class Assembler {
           tempCode.add(line);
         }
       } else {
-        switch (line.substring(0,3)) {
-          case "adc":
+        //System.out.println("Instruction: '" + line + "'");
+        while (line.length() < 4) {
+          line = line + " ";
+        }
+        switch (line.substring(0,4)) {
+          case "adc ":
             temp = line.indexOf(' ');
             if (line.charAt(temp + 1) == '#') {
               tempCode.add("69 __UFF_" + line.substring(temp + 2));
@@ -246,7 +251,7 @@ public class Assembler {
               }
             }
             break;
-          case "sbc":
+          case "sbc ":
             temp = line.indexOf(' ');
             if (line.charAt(temp + 1) == '#') {
               tempCode.add("29 __UFF_" + line.substring(temp + 2));
@@ -269,7 +274,7 @@ public class Assembler {
               }
             }
             break;
-          case "ora":
+          case "ora ":
             temp = line.indexOf(' ');
             if (line.charAt(temp + 1) == '#') {
               tempCode.add("09 __UFF_" + line.substring(temp + 2));
@@ -292,7 +297,7 @@ public class Assembler {
               }
             }
             break;
-          case "and":
+          case "and ":
             temp = line.indexOf(' ');
             if (line.charAt(temp + 1) == '#') {
               tempCode.add("29 __UFF_" + line.substring(temp + 2));
@@ -315,7 +320,7 @@ public class Assembler {
               }
             }
             break;
-          case "eor":
+          case "eor ":
             temp = line.indexOf(' ');
             if (line.charAt(temp + 1) == '#') {
               tempCode.add("49 __UFF_" + line.substring(temp + 2));
@@ -338,79 +343,79 @@ public class Assembler {
               }
             }
             break;
-          case "bit":
+          case "bit ":
             tempCode.add("2C" + line.substring(line.indexOf(' ')));
             opSizes.add(3);
             break;
 
-          case "bcc":
+          case "bcc ":
             opSizes.add(2);
             tempCode.add("90 __REL_" + line.substring(line.indexOf(' ')+1));
             break;
-          case "bcs":
+          case "bcs ":
             opSizes.add(2);
             tempCode.add("B0 __REL_" + line.substring(line.indexOf(' ')+1));
             break;
-          case "beq":
+          case "beq ":
             opSizes.add(2);
             tempCode.add("F0 __REL_" + line.substring(line.indexOf(' ')+1));
             break;
-          case "bne":
+          case "bne ":
             opSizes.add(2);
             tempCode.add("D0 __REL_" + line.substring(line.indexOf(' ')+1));
             break;
-          case "bmi":
+          case "bmi  ":
             opSizes.add(2);
             tempCode.add("30 __REL_" + line.substring(line.indexOf(' ')+1));
             break;
-          case "bpl":
+          case "bpl ":
             opSizes.add(2);
             tempCode.add("10 __REL_" + line.substring(line.indexOf(' ')+1));
             break;
-          case "bvc":
+          case "bvc ":
             opSizes.add(2);
             tempCode.add("50 __REL_" + line.substring(line.indexOf(' ')+1));
             break;
-          case "bvs":
+          case "bvs ":
             opSizes.add(2);
             tempCode.add("70 __REL_" + line.substring(line.indexOf(' ')+1));
             break;
 
-          case "brk":
+          case "brk ":
             opSizes.add(1);
             tempCode.add("00");
             break;
 
-          case "clc":
+          case "clc ":
             opSizes.add(1);
             tempCode.add("18");
             break;
-          case "cld":
+          case "cld ":
             opSizes.add(1);
             tempCode.add("D8");
             break;
-          case "cli":
+          case "cli ":
             opSizes.add(1);
             tempCode.add("58");
             break;
-          case "clv":
+          case "clv ":
             opSizes.add(1);
             tempCode.add("B8");
             break;
-          case "sec":
+          case "sec ":
             opSizes.add(1);
             tempCode.add("38");
             break;
-          case "sed":
+          case "sed ":
             opSizes.add(1);
             tempCode.add("F8");
             break;
-          case "sei":
+          case "sei ":
             opSizes.add(1);
             tempCode.add("78");
             break;
 
-          case "cmp":
+          case "cmp ":
             temp = line.indexOf(' ');
             if (line.charAt(temp + 1) == '#') {
               tempCode.add("C9 __UFF_" + line.substring(temp + 2));
@@ -433,7 +438,7 @@ public class Assembler {
               }
             }
             break;
-          case "cpx":
+          case "cpx ":
             temp = line.indexOf(' ');
             if (line.charAt(temp + 1) == '#') {
               tempCode.add("E0 __UFF_" + line.substring(temp + 2));
@@ -443,7 +448,7 @@ public class Assembler {
               opSizes.add(3);
             }
             break;
-          case "cpy":
+          case "cpy ":
             temp = line.indexOf(' ');
             if (line.charAt(temp + 1) == '#') {
               tempCode.add("C0 __UFF_" + line.substring(temp + 2));
@@ -453,7 +458,7 @@ public class Assembler {
               opSizes.add(3);
             }
             break;
-          case "dec":
+          case "dec ":
             if (line.length() <= 4 || line.charAt(line.indexOf(' ') + 1) == 'a') {
               // DEC A 65c02 only opcode
               tempCode.add("1A");
@@ -467,7 +472,7 @@ public class Assembler {
               }
             }
             break;
-          case "inc":
+          case "inc ":
             if (line.length() <= 4 || line.charAt(line.indexOf(' ') + 1) == 'a') {
               // INC A 65c02 only opcode
               tempCode.add("3A");
@@ -481,7 +486,7 @@ public class Assembler {
               }
             }
             break;
-          case "jmp":
+          case "jmp ":
             opSizes.add(3);
             if (line.indexOf('(') != -1) {
               tempCode.add("6C " + line.substring(line.indexOf('(') + 1,line.indexOf(')')));
@@ -489,16 +494,16 @@ public class Assembler {
               tempCode.add("4C" + line.substring(line.indexOf(' ')));
             }
             break;
-          case "jsr":
+          case "jsr ":
             tempCode.add("20 " + line.substring(line.indexOf(' ') + 1));
             opSizes.add(3);
             break;
-          case "nop":
+          case "nop ":
             opSizes.add(1);
             tempCode.add("EA");
             break;
 
-          case "lda":
+          case "lda ":
             temp = line.indexOf(' ');
             if (line.charAt(temp + 1) == '#') {
               tempCode.add("A9 __UFF_" + line.substring(temp + 2));
@@ -521,7 +526,7 @@ public class Assembler {
               }
             }
             break;
-          case "ldx":
+          case "ldx ":
             temp = line.indexOf(' ');
             if (line.charAt(temp + 1) == '#') {
               tempCode.add("A2 __UFF_" + line.substring(temp + 2));
@@ -535,7 +540,7 @@ public class Assembler {
               }
             }
             break;
-          case "ldy":
+          case "ldy ":
             temp = line.indexOf(' ');
             if (line.charAt(temp + 1) == '#') {
               tempCode.add("A0 __UFF_" + line.substring(temp + 2));
@@ -549,7 +554,7 @@ public class Assembler {
               }
             }
             break;
-          case "asl":
+          case "asl ":
             if (line.length() <= 4 || line.charAt(line.indexOf(' ') + 1) == 'a') {
               tempCode.add("0A");
               opSizes.add(1);
@@ -562,7 +567,7 @@ public class Assembler {
               }
             }
             break;
-          case "lsr":
+          case "lsr ":
             if (line.length() <= 4 || line.charAt(line.indexOf(' ') + 1) == 'a') {
               tempCode.add("4A");
               opSizes.add(1);
@@ -575,7 +580,7 @@ public class Assembler {
               }
             }
             break;
-          case "rol":
+          case "rol ":
             if (line.length() <= 4 || line.charAt(line.indexOf(' ') + 1) == 'a') {
               tempCode.add("2A");
               opSizes.add(1);
@@ -588,7 +593,7 @@ public class Assembler {
               }
             }
             break;
-          case "ror":
+          case "ror ":
             if (line.length() <= 4 || line.charAt(line.indexOf(' ') + 1) == 'a') {
               tempCode.add("6A");
               opSizes.add(1);
@@ -601,7 +606,7 @@ public class Assembler {
               }
             }
             break;
-          case "sta":
+          case "sta ":
             temp = line.indexOf(' ');
             if (line.indexOf('(') != -1) {
               opSizes.add(2);
@@ -619,7 +624,7 @@ public class Assembler {
               }
             }
             break;
-          case "stx":
+          case "stx ":
             if (line.indexOf(',') != -1) {
               tempCode.add("96 __UFF_" + line.substring(line.indexOf(' ')+1,line.indexOf(',')));
               opSizes.add(2);
@@ -628,7 +633,7 @@ public class Assembler {
               opSizes.add(3);
             }
             break;
-          case "sty":
+          case "sty ":
             if (line.indexOf(',') != -1) {
               tempCode.add("94 __UFF_" + line.substring(line.indexOf(' ')+1,line.indexOf(',')));
               opSizes.add(2);
@@ -638,69 +643,69 @@ public class Assembler {
             }
             break;
 
-          case "txs":
+          case "txs ":
             opSizes.add(1);
             tempCode.add("9A");
             break;
-          case "tsx":
+          case "tsx ":
             opSizes.add(1);
             tempCode.add("BA");
             break;
-          case "pha":
+          case "pha ":
             opSizes.add(1);
             tempCode.add("48");
             break;
-          case "php":
+          case "php ":
             opSizes.add(1);
             tempCode.add("08");
             break;
-          case "pla":
+          case "pla ":
             opSizes.add(1);
             tempCode.add("68");
             break;
-          case "plp":
+          case "plp ":
             opSizes.add(1);
             tempCode.add("28");
             break;
 
-          case "rti":
+          case "rti ":
             opSizes.add(1);
             tempCode.add("40");
             break;
-          case "rts":
+          case "rts ":
             opSizes.add(1);
             tempCode.add("60");
             break;
 
-          case "tax":
+          case "tax ":
             opSizes.add(1);
             tempCode.add("AA");
             break;
-          case "txa":
+          case "txa ":
             opSizes.add(1);
             tempCode.add("8A");
             break;
-          case "dex":
+          case "dex ":
             opSizes.add(1);
             tempCode.add("CA");
             break;
-          case "inx":
+          case "inx ":
             opSizes.add(1);
             tempCode.add("E8");
             break;
-          case "tay":
+          case "tay ":
             opSizes.add(1);
             tempCode.add("A8");
             break;
-          case "tya":
+          case "tya ":
             opSizes.add(1);
             tempCode.add("98");
             break;
-          case "dey":
+          case "dey ":
             opSizes.add(1);
             tempCode.add("88");
             break;
-          case "iny":
+          case "iny ":
             opSizes.add(1);
             tempCode.add("C8");
             break;
@@ -720,6 +725,9 @@ public class Assembler {
                 lastGlobalLabel = line.substring(0,line.lastIndexOf(':'));
                 tempCode.add("__LBL_" + lastGlobalLabel);
               }
+            } else if (line.indexOf('=') != -1) {
+              opSizes.add(0);
+              tempCode.add("__LBB_" + line.replaceAll("\\s+",""));
             } else {
               System.out.println(input + "(" + (lineNum + 1) + "): Error: Incorrect opcode or other error");
               System.exit(1);
@@ -747,6 +755,10 @@ public class Assembler {
           lastGlobalLabel = tempLine.substring(6);
           labels.put(lastGlobalLabel,PrgmCounter);
         }
+      } else if (tempLine.length() >= 5 && tempLine.substring(0,5).equals("__LBB")) {
+        String val = tempLine.substring(6);
+        //System.out.println(val);
+        labels.put(val.substring(0, val.indexOf('=')), parseNumber(val.substring(val.indexOf('=') + 1)));
       }
       //System.out.println(tempLine);
       if (tempLine.charAt(0) == '.') {
@@ -860,22 +872,32 @@ public class Assembler {
     PrgmCounter = platform.startAddr;
     for (int i = 0; i < tempCode.size(); i++) {
       String line = tempCode.get(i);
-      System.out.println(line);
-      if (line.charAt(0) == '_' || line.charAt(0) == '.' || (line.length() >= 8 && line.substring(3,9).equals("__REL_"))) {
+      if (verbose) {
+        if (line.length() >= 40) {
+          System.out.println(line.substring(0,40) + " (CONT)");
+        } else {
+          System.out.println(line);
+        }
+      }
+      if (line.charAt(0) == '_' || line.charAt(0) == '.' || (line.length() >= 9 && line.substring(3,9).equals("__REL_"))) {
         if (line.substring(0,4).equals("_DAT")) {
           for (String s : line.substring(5).split(" ",0)) {
             outputBytes.add(getCharFromString(s,1));
           }
         } else if (line.substring(0,6).equals("__LBL_")) {
-          if (line.charAt(5) != '@') {
-            lastGlobalLabel = line.substring(5);
+          if (line.indexOf('@') == -1) {
+            lastGlobalLabel = line.substring(6);
           }
         } else if (line.substring(3,9).equals("__REL_")) {
-          //System.out.println("Relative!");
-          if (isLetter(line.charAt(9))) {
+          if (isLetter(line.charAt(9)) || line.charAt(9) == '@') {
+            /*if (verbose) {
+              System.out.println("rel addr:");
+              System.out.println("label = '" + line.substring(9) + "'");
+              System.out.println("lgl = '" + lastGlobalLabel + "'");
+            }*/
             temp = parseLabel(line.substring(9),labels,lastGlobalLabel) - PrgmCounter - 2;
             if (temp < -128 || temp > 127) {
-              System.out.println("Branch distance " + temp + " out of range [-128,127]");
+              System.out.println("Error: Branch distance " + temp + " out of range [-128,127]");
               System.exit(1);
             }
             outputBytes.add(getCharFromString(line,0));
