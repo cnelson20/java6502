@@ -37,7 +37,7 @@
         }
       } catch (FileNotFoundException e) {
         System.out.println("Cannot open \"platforms.txt\"");
-        System.exit(-1);
+        System.exit(1);
       }
       platforms = new targetPlatform[lines.size()];
       String[] temp;
